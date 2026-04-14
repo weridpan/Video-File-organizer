@@ -6,19 +6,22 @@ folders (Images, Videos, Audio, etc.) based on file extensions.
 
 import os
 import shutil
+import re
 
 # Constants
 DEFAULT_CATEGORY = "other"
 DUPLICATE_SUFFIX = "_{}"
 
-# File category mapping
+# File category mapping - supports nested paths like "Category/Subfolder"
 FILE_CATEGORIES = {
     "Images": [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff"],
+    "Images/working documents": [".psd", ".ai", ".indd"],  # AI design files go to Images/AI subfolder
     "Videos": [".mp4", ".avi", ".mov", ".mkv", ".flv", ".wmv", ".mpeg"],
     "Audio": [".mp3", ".wav", ".aac", ".flac", ".ogg", ".m4a"],
     "Documents": [".pdf", ".docx", ".txt", ".xlsx", ".pptx", ".odt", ".rtf"],
     "Archives": [".zip", ".rar", ".tar", ".gz", ".7z", ".iso"],
-    "Project Files": [".psd", ".ai", ".indd", ".sketch", ".xd", ".fig", ".prproj", ".aep"],
+    "Project Files": [".sketch", ".xd", ".fig", ".prproj", ".aep"],
+    "Project Files/Autosave": [".autosave", ".bak"],  # Autosave files go to Project Files/Autosave
     "Subtitles": [".srt", ".sub", ".vtt", ".csv", ".tsv"],
     DEFAULT_CATEGORY: []
 }
@@ -40,8 +43,46 @@ def is_directory_empty(directory_path):
         return False
 
 
+def is_premiere_pro_autosave(filename):
+    """Check if a file is a Premiere Pro autosave file based on filename pattern.
+    
+    Premiere Pro autosaves follow the pattern:
+    ProjectName--GUID-TIMESTAMP[_number]
+    where GUID is a UUID format and TIMESTAMP is YYYY-MM-DD_HH-MM-SS
+    The trailing _number is optional.
+    
+    Args:
+        filename (str): Name of the file.
+    
+    Returns:
+        bool: True if file matches Premiere Pro autosave pattern, False otherwise.
+    """
+    # Pattern: ProjectName--UUID-Timestamp[_number]
+    # UUID format: 8-4-4-4-12 hexadecimal characters
+    # Timestamp format: YYYY-MM-DD_HH-MM-SS
+    # Optional trailing _number
+    pattern = r'--[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(_\d+)?'
+    
+    return bool(re.search(pattern, filename, re.IGNORECASE))
+
+
+def is_after_effects_autosave(filename):
+    """Check if a file is an After Effects autosave file based on filename pattern.
+    
+    After Effects autosaves contain "auto-save" in the filename.
+    Example: "room particle auto-save 6_1"
+    
+    Args:
+        filename (str): Name of the file.
+    
+    Returns:
+        bool: True if file matches After Effects autosave pattern, False otherwise.
+    """
+    return bool(re.search(r'auto-save', filename, re.IGNORECASE))
+
+
 def find_category_for_file(filename, categories):
-    """Find the appropriate category for a file based on extension.
+    """Find the appropriate category for a file based on extension or pattern.
     
     Args:
         filename (str): Name of the file.
@@ -50,6 +91,11 @@ def find_category_for_file(filename, categories):
     Returns:
         str: Category name, or DEFAULT_CATEGORY if no match found.
     """
+    # Check for autosave files first (Premiere Pro and After Effects)
+    if is_premiere_pro_autosave(filename) or is_after_effects_autosave(filename):
+        return "Project Files/Autosave"
+    
+    # Then check file extension
     file_ext = os.path.splitext(filename)[1].lower()
     
     for category, extensions in categories.items():
@@ -163,6 +209,17 @@ def main():
         if not os.path.exists(target_dir):
             print(f"Error: Target directory '{target_dir}' does not exist.")
             return 1
+        
+        # Normalize paths and check if source and target are the same
+        normalized_source = os.path.abspath(source_dir)
+        normalized_target = os.path.abspath(target_dir)
+        
+        if normalized_source == normalized_target:
+            print("\n⚠️  Warning: Source and target directories are the same!")
+            confirm = input("Do you want to organize files within this directory? (y/n): ").lower()
+            if confirm != 'y':
+                print("Operation cancelled.")
+                return 0
         
         # Ask user to choose between copy and move
         print("\nChoose operation:")
