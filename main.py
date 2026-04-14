@@ -97,18 +97,19 @@ def create_folders(target_dir, folders):
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-def organize_files_by_type(source_dir, target_dir, categories):
+def organize_files_by_type(source_dir, target_dir, categories, operation="move"):
     """Recursively scan source directory and organize files by category.
     
     Args:
         source_dir (str): Source directory path.
         target_dir (str): Target directory path.
         categories (dict): Mapping of category names to file extensions.
+        operation (str): Either "move" or "copy". Determines file operation.
     
     Returns:
         tuple: (files_moved_count, files_failed_count)
     """
-    files_moved = 0
+    files_processed = 0
     files_failed = 0
     
     for root, dirs, files in os.walk(source_dir):
@@ -127,16 +128,22 @@ def organize_files_by_type(source_dir, target_dir, categories):
                 # Get unique target path (handling duplicates)
                 target_file_path = handle_duplicate_filename(target_folder, filename)
                 
-                # Move the file
-                shutil.move(file_path, target_file_path)
-                print(f"Moved {filename} to {category}/")
-                files_moved += 1
+                # Perform the file operation (move or copy)
+                if operation.lower() == "copy":
+                    shutil.copy2(file_path, target_file_path)
+                    action = "Copied"
+                else:
+                    shutil.move(file_path, target_file_path)
+                    action = "Moved"
+                
+                print(f"{action} {filename} to {category}/")
+                files_processed += 1
                 
             except Exception as error:
-                print(f"Error moving {filename}: {error}")
+                print(f"Error {operation}ing {filename}: {error}")
                 files_failed += 1
     
-    return files_moved, files_failed
+    return files_processed, files_failed
 
 def main():
     """Main entry point for the file organizer."""
@@ -157,6 +164,19 @@ def main():
             print(f"Error: Target directory '{target_dir}' does not exist.")
             return 1
         
+        # Ask user to choose between move and copy
+        print("\nChoose operation:")
+        print("1. Move files (original files will be moved to target)")
+        print("2. Copy files (original files will remain in source)")
+        choice = input("Enter your choice (1 or 2): ").strip()
+        
+        if choice == "2":
+            operation = "copy"
+            print("Selected: Copy")
+        else:
+            operation = "move"
+            print("Selected: Move")
+        
         # Check if target directory is empty
         is_empty = is_directory_empty(target_dir)
         status = "empty" if is_empty else "not empty"
@@ -175,12 +195,12 @@ def main():
         
         # Organize files
         print("\nOrganizing files...")
-        files_moved, files_failed = organize_files_by_type(source_dir, target_dir, FILE_CATEGORIES)
+        files_processed, files_failed = organize_files_by_type(source_dir, target_dir, FILE_CATEGORIES, operation)
         
         # Display summary
         print("\n" + "=" * 50)
         print(f"File organization complete!")
-        print(f"Files moved: {files_moved}")
+        print(f"Files {operation}d: {files_processed}")
         if files_failed > 0:
             print(f"Files failed: {files_failed}")
         print("=" * 50)
