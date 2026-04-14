@@ -164,18 +164,18 @@ def main():
             print(f"Error: Target directory '{target_dir}' does not exist.")
             return 1
         
-        # Ask user to choose between move and copy
+        # Ask user to choose between copy and move
         print("\nChoose operation:")
-        print("1. Move files (original files will be moved to target)")
-        print("2. Copy files (original files will remain in source)")
+        print("1. Copy files (original files will remain in source)")
+        print("2. Move files (original files will be moved to target)")
         choice = input("Enter your choice (1 or 2): ").strip()
         
         if choice == "2":
-            operation = "copy"
-            print("Selected: Copy")
-        else:
             operation = "move"
             print("Selected: Move")
+        else:
+            operation = "copy"
+            print("Selected: Copy")
         
         # Check if target directory is empty
         is_empty = is_directory_empty(target_dir)
