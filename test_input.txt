@@ -1,0 +1,5 @@
+test_files
+test_target
+copy
+dry_run
+yes
