@@ -305,6 +305,7 @@ def organize_files_by_type(source_dir: str, target_dir: str, categories: dict, o
             dirs[:] = [
                 d for d in dirs
                 if os.path.commonpath([os.path.abspath(os.path.join(root, d)), normalized_target]) != normalized_target
+                and d.lower() not in ("export", "exports", "_export", "_exports", "exported", "output", "outputs", "rendered", "renders")
             ]
             
             # Process each file in the current directory
